@@ -3,5 +3,5 @@ A journey towards XGBoost algorithm
 
 Sources:
 
-Patrick Winston MIT LEcture on [Boosting](https://www.youtube.com/watch?v=UHBmv7qCey4)
+Patrick Winston MIT Lecture on [AdaBoosting](https://www.youtube.com/watch?v=UHBmv7qCey4), XGBoost is a refinement of Gradient Boosting, but AdaBoost has analitics solutions and so it is usefull to get intuition and general idea.
 
