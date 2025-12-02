@@ -7,3 +7,5 @@ Patrick Winston MIT Lecture on AdaBoosting ([->link](https://www.youtube.com/wat
 
 Stanford 2018 Lecture on Decition Trees and Ensemble Methods ([->link](https://www.youtube.com/watch?v=wr9gUr-eWdA))
 
+Gradient boosting machines, a tutorial ([->link](https://pmc.ncbi.nlm.nih.gov/articles/PMC3885826/))
+
