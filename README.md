@@ -9,5 +9,5 @@ Stanford 2018 Lecture on Decition Trees and Ensemble Methods ([->link](https://w
 
 Gradient boosting machines, a tutorial ([->link](https://pmc.ncbi.nlm.nih.gov/articles/PMC3885826/))
 
-XGBoost (original paper) ([->link]((https://arxiv.org/pdf/1603.02754)))
+XGBoost (original paper) ([->link](https://arxiv.org/pdf/1603.02754))
 
