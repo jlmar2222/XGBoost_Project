@@ -19,3 +19,5 @@ Git Hub Repository of above ([->link](https://github.com/Ekeany/XGBoost-From-Scr
 
 DDSketch ([->link](https://blog.acolyer.org/2019/09/06/ddsketch/)), for getting intuition on skecths (stuff that compress bid amoun of data in smaller representations)
 
+Python implementation of DDSketch ([->link](https://github.com/bentay85/wqsketch/blob/main/wqsketch/wqsketch.py))
+
