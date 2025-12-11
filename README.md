@@ -13,5 +13,9 @@ XGBoost (original paper) ([->link](https://arxiv.org/pdf/1603.02754))
 
 XGBoost from Scratch in Python Medium Article ([->link](https://medium.com/analytics-vidhya/what-makes-xgboost-so-extreme-e1544a4433bb))
 
-Git Hub Repository of above ([->link](https://github.com/Ekeany/XGBoost-From-Scratch))
+Git Hub Repository of above ([->link](https://github.com/Ekeany/XGBoost-From-Scratch)). (Aunque la parte del Weighted Quantile Sketch es erronea)
+
+
+
+DDSketch ([->link](https://blog.acolyer.org/2019/09/06/ddsketch/)), for getting intuition on skecths (stuff that compress bid amoun of data in smaller representations)
 
