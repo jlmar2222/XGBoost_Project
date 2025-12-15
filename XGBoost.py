@@ -40,7 +40,8 @@ class Stump:
             idx = np.argsort(D[:, k]) # obtenemos indices ordenados
             d_k = D[:,[k,-1]][idx] # generamos Columna organizada en base a esos indices
 
-            #(ii) Marcamos Candidatos segun Weighted Quantile Criteria (weight=h)            
+            #(ii) Marcamos Candidatos segun Weighted Quantile Criteria (weight=h) 
+            # acumulamos datos hasta que la suma de sus weights se aprox. eps           
             accumulated = 0
             for n in range(D.shape[0]):
                 
@@ -112,6 +113,60 @@ class Stump:
 
 
 
-    
+class Tree():
+
+    def __init__(self, data, k,max_depth):
+        super().__init__()
+        self.k = k
+        self.data = data
+        self.max_depth = max_depth 
+        
+        self.root = None
+        # revisar porque puede ser que arboles sean mas pequeños que maxdepth 
+        # esto puede hacer que pete imagino 
+        
+    def build_tree(self, data, eps, alpha, depth=0):
+        node = Stump(data, self.k)
+
+        if depth >= self.max_depth or len(data) <= 1:
+            return node
+
+        Lnode, Rnode = node.do_split(eps, alpha)
+
+        node.left = self.build_tree(Lnode.data, eps, alpha, depth + 1)
+        node.right = self.build_tree(Rnode.data, eps, alpha, depth + 1)
+
+        return node
+
+    def fit(self, data, eps, alpha):
+        self.root = self.build_tree(data, eps, alpha)
+
+            
+          
 
 
+###   PRUEBA   ########################    
+
+
+# Definimos n y k para el ejemplo
+n = 5  # Número de filas
+k = 3  # Número de columnas para X
+
+# Creamos las matrices individuales con dimensiones aleatorias
+y = np.random.rand(n, 1) # (n, 1)
+X = np.random.rand(n, k) # (n, k)
+g = np.random.rand(n, 1) # (n, 1)
+h = np.random.rand(n, 1) # (n, 1)
+
+# Concatenamos las matrices horizontalmente para formar 'data'
+data = np.concatenate((y, X, g, h), axis=1)
+
+
+Nodo1 = Stump(data, k)
+
+L ,R = Nodo1.do_split(0.05,0.5)
+
+
+print(L.data)
+print('\n')
+print(Nodo1.right.data)
