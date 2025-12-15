@@ -11,12 +11,23 @@ class Stump:
         self.X = self.data[:,1:k]
         self.g = self.data[:,k:k+1]
         self.h = self.data[:,k+1:k+2]  
+
+        # Guardará aqui los datos una vez ejecutado el split
+        self.feature = None
+        self.threshold = None
+        self.left = None
+        self.right = None
     
-        pass
 
     def do_split(self,eps,alpha):
         # revisar porque alomejor epsilon no deberia de ser estático y depende de w(D) como
         # pone en el apendice del Weighted Quantile Sketch 
+
+        # basicamente se mide que particion (split) genera mas Gain 
+        # basandonos en esa ecuaion y la que más valor de, es la  que se utiliza
+        # recuerda que aunque los weights (hessianos) sean compartidos por filas
+        # el hecho de que el sort sea por columna (feature) asegura o permite
+        # que los quantiles sean feature dependent
 
         D = np.concatenate((self.X, self.h), axis=1) # Espacio de instancias con pesos
         splits = {} # mejor split por feature
@@ -48,7 +59,7 @@ class Stump:
 
             Father_Gain = (G**2)/(H + alpha)
 
-            best_candidate = -np.inf
+            best_score = -np.inf
 
             for i in range(len(candidates)):
 
@@ -65,29 +76,42 @@ class Stump:
 
                 score = Left_Son_Gain + Right_Son_Gain - Father_Gain # based on Equation (7)
 
-                if best_candidate < score:
-                    best_candidate = score
+                if best_score < score:
+                    best_score = score
                     split = candidates[i]
                     
 
                 else:
-                    best_candidate = best_candidate
+                    best_score = best_score
                     split = split
 
-            splits[k+1] = split
+            splits[k+1] = (best_score,split)
 
-        # devulve el valor del diccionario maximo
-        best_split = max(splits.items(), key = lambda x: x[1])  # ('feature' : split_value)
+        # devulve el valor del diccionario con maximo score
+        best_split = max(splits.items(), key = lambda x: x[1][0])  # ('feature' : (score,split_value))
 
-    # basicamente se mide que particion (split) genera mas Gain 
-    # basandonos en esa ecuaion y la que más valor de, es la  que se utiliza
-    # recuerda que aunque los weights (hessianos) sean compartidos por filas
-    # el hecho de que el sort sea por columna (feature) asegura o permite
-    # que los quantiles sean feature dependent
+        feature = best_split[0] # feature splited
+        threshold = best_split[1][1] # threshold selected
 
-        # yo haria que esta funcion me devolviera 2 hijos  de un nodo padre es decir
-        # es decir que me filtre una base de datos dada en 2 partes basandose en el split optimo
-        # calculado 
+        # (3) Do the Actual Split
+        L_data = self.data[self.data[:,feature] < threshold]
+        R_data = self.data[self.data[:,feature] >= threshold]
 
+        # Create Stump instances based in this new splits
+        # formamos Devolvemos 2 nuevos Stumps dentro del msimo Stump
+        L_son = Stump(L_data, k)
+        R_son = Stump(R_data,k)
+
+        # Guardamos resultados par ael objeto
+        self.feature = feature
+        self.threshold = threshold
+        self.left = L_son
+        self.right = R_son
+
+        return L_son, R_son
+
+
+
+    
 
 
