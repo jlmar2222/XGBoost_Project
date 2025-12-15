@@ -16,8 +16,11 @@ XGBoost from Scratch in Python Medium Article ([->link](https://medium.com/analy
 Git Hub Repository of above ([->link](https://github.com/Ekeany/XGBoost-From-Scratch)). (Aunque la parte del Weighted Quantile Sketch es erronea)
 
 
+Weighted Quantile Skecth briefly explained ([->link](https://www.youtube.com/watch?v=ejUvX1L-yzE))
 
-DDSketch ([->link](https://blog.acolyer.org/2019/09/06/ddsketch/)), for getting intuition on skecths (stuff that compress bid amoun of data in smaller representations)
+Stat Quest channel good intuition abou what's happening Under XGBoost OPtimizations ([->link](https://www.youtube.com/watch?v=oRrKeUCEbq8))
 
-Python implementation of DDSketch ([->link](https://github.com/bentay85/wqsketch/blob/main/wqsketch/wqsketch.py))
+
+
+
 
