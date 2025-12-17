@@ -181,8 +181,8 @@ class Tree():
         new_leafs = []
         for leaf in leaves:
 
-            G_j = np.sum(leaf.data[:,-2])
-            H_j = np.sum(leaf.data[:,-1])
+            G_j = np.sum(leaf.data[:,-3])
+            H_j = np.sum(leaf.data[:,-2])
 
             weight = - (G_j / (H_j + self.alpha)) # based on equation (5)
             # ponemos las nuevas predicciones en la columna de w
@@ -237,9 +237,7 @@ class XGBoost:
             model.fit(data)
             model.get_leaves(model.root)
             model.do_predicttion(model.leaves)
-
-            # <<< Aquí pones el print para inspeccionar los pesos por hoja >>>
-            print("Pesos por hoja:", model.new_data[:, -1])
+           
 
             # Ahora reordenamos new_data para que coincida con el orden original
             # Aseguramos consistencia row_wise
@@ -255,8 +253,8 @@ class XGBoost:
             g, h = self.get_gradients(y_pred) 
 
             #Construimos nueva base de datos para el siguiente arbol
-            model.new_data[:,-3:-2] = g.reshape(-1, 1) # mismo forzado a 2D
-            model.new_data[:,-2:-1] = h.reshape(-1, 1) # mismo forzado a 2D
+            model.new_data[:,-3] = g.flatten() # mismo forzado a 2D
+            model.new_data[:,-2] = h.flatten() # mismo forzado a 2D
             data = model.new_data
         
         self.y_pred = y_pred
@@ -266,25 +264,30 @@ class XGBoost:
 
 ###   PRUEBA  ########################    
 
-import numpy as np
+np.random.seed(42)
 
-np.random.seed(42)  # <- seed fija
+n = 1000  # Número de filas
+k = 5    # Número de features (puedes cambiar esto a cualquier valor)
 
-# Definimos n y k para el ejemplo
-n = 10  # Número de filas
-k = 2   # Número de columnas para X
+# Generamos datos aleatorios
+X = np.random.rand(n, k)
 
-# Generamos datos con un patrón lineal para que el modelo pueda aprender
-X = np.random.rand(n, k)  # (n, k)
-# Definimos una relación lineal simple: y = 3*X0 + 2*X1 + ruido
-y = 3*X[:,0:1] + 2*X[:,1:2] + 0.1*np.random.randn(n,1)  
+# Generamos coeficientes aleatorios para cada feature
+# Puedes modificar esto para tener coeficientes específicos
+coeficientes = np.random.uniform(1, 5, size=(k, 1))
+print(f"Coeficientes verdaderos: {coeficientes.flatten()}")
+
+# Relación lineal: y = c1*X1 + c2*X2 + ... + ck*Xk + ruido
+y = X @ coeficientes + 0.1 * np.random.randn(n, 1)
 
 # Inicializamos y entrenamos el modelo
 model = XGBoost(y, X, learning_rate=0.1, boosting_rounds=10, loss_function='mse')
 predictions = model.fit()
 
-print("Predicciones reales:")
-print(y)
-print('\n')
-print("Predicciones finales:")
-print(predictions)
+
+print("Real vs Predicción:")
+y_predict = np.hstack((y, predictions))
+error = np.abs(y_predict[:,0] - y_predict[:,1])
+y_predict = np.hstack((y_predict, error.reshape(-1,1)))
+print(y_predict[:10])  # Muestra las primeras 10 predicciones vs valores reales
+print("Error medio absoluto:", np.mean(error))
