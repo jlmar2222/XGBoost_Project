@@ -7,14 +7,18 @@ class Stump:
     def __init__(self, data,k):
         super().__init__()       
 
-        self.data = data # data contiene y, X, g, h, w en ese orden        
-        self.y = self.data[:,0:1]
-        self.X = self.data[:,1:k]
-        self.g = self.data[:,k:k+1]
-        self.h = self.data[:,k+1:k+2]  
+        self.data = data # data contiene y, X, g, h, w en ese orden   
 
-        self.w = self.data[:,k+2:k+3]
+        
+        self.row_id = self.data[:,0:1] # indx = 0
+        self.y = self.data[:,1:2] # indx = 1
+        self.X = self.data[:,2:k+2] # indx = 2,...,k+1
+        self.g = self.data[:,k+2:k+3] # indx = -3
+        self.h = self.data[:,k+3:k+4] # indx = -2
+        self.w = self.data[:,k+4:k+5] # indx = -1
+        
 
+        
         # Guardará aqui los datos una vez ejecutado el split
         self.feature = None
         self.threshold = None
@@ -57,7 +61,7 @@ class Stump:
                     candidates.append(x_i) # candidates ~ [min(x_i), max(x_i)]   
                     accumulated = 0             
         #(2) Save Scores (based on Gains => Equación (7) del paper original)
-            father = self.data[:,[k+1,-3,-2]] # coge Columna del feature, gradiante y hessiano
+            father = self.data[:,[k+2,-3,-2]] # coge Columna del feature, gradiante y hessiano
             G = np.sum(father[:,-2])
             H = np.sum(father[:,-1])
 
@@ -121,10 +125,12 @@ class Stump:
 
 class Tree():
 
-    def __init__(self, data, k, max_depth):
+    def __init__(self, data, eps, alpha, k, max_depth):
         super().__init__()
         self.k = k
-        self.data = data
+        self.eps = eps
+        self.alpha = alpha
+        self.data = data        
         self.max_depth = max_depth 
 
         self.root = None
@@ -133,7 +139,7 @@ class Tree():
         # esto puede hacer que pete imagino 
         self.new_data = None
     
-    def build_tree(self, data, eps, alpha, depth = 0, min_samples = 1):
+    def build_tree(self, data, depth = 0, min_samples = 1):
 
         node = Stump(data,self.k)
 
@@ -141,16 +147,16 @@ class Tree():
             return node
 
         # Solo continuamos construyendo si el nodo no es None
-        L_node, R_node = node.do_split(eps,alpha) 
+        L_node, R_node = node.do_split(self.eps,self.alpha) 
         if L_node is not None:
-            node.left = self.build_tree(L_node.data,eps,alpha, depth = depth + 1)
+            node.left = self.build_tree(L_node.data, depth = depth + 1)
         if R_node is not None:
-            node.right = self.build_tree(R_node.data, eps, alpha, depth = depth + 1)
+            node.right = self.build_tree(R_node.data, depth = depth + 1)
 
         return node
 
-    def fit(self, data, eps, alpha): # desarrolla el arbol en su plenitud, desde la raiz
-        self.root = self.build_tree(data, eps, alpha)
+    def fit(self, data): # desarrolla el arbol en su plenitud, desde la raiz
+        self.root = self.build_tree(data)
 
 
     def get_leaves(self,node): # recorre el arbol y devuelve los nodos hoja
@@ -171,56 +177,114 @@ class Tree():
         #return leafs = [leaf,leaf,...,leaf] # lista de nodos hoja (Stumps)
 
 
-    def do_predicttion(self,leaves,alpha): # prectition = weight of the leaf based on equation (5)
+    def do_predicttion(self,leaves): # prectition = weight of the leaf based on equation (5)
         new_leafs = []
         for leaf in leaves:
 
             G_j = np.sum(leaf.data[:,-2])
             H_j = np.sum(leaf.data[:,-1])
 
-            weight = - (G_j / (H_j + alpha))
-
-            leaf.data[:,-1] = weight # ponemos las nuevas predicciones en la columna de w
+            weight = - (G_j / (H_j + self.alpha)) # based on equation (5)
+            # ponemos las nuevas predicciones en la columna de w
+            leaf.data[:,-1] = np.asanyarray(weight).reshape(-1,1) # forzar dimesniones 2D: (n,1)
             new_leafs.append(leaf.data)
         
         self.new_data = np.vstack(new_leafs)    
 
            
-    
-                      
 
-###   PRUEBA   ########################    
+
+class XGBoost:
+    def __init__(self, y, X,learning_rate = 0.1,boosting_rounds = 10, loss_function='mse'):
+        super().__init__()
+        self.loss_function = loss_function
+        self.learning_rate = learning_rate
+        self.boosting_rounds = boosting_rounds
+        self.y = y
+        self.X = X
+        self.row_id = np.arange(self.X.shape[0]).reshape(-1, 1)
+
+        self.y_pred = None
+
+    def get_gradients(self,y_pred):
+        
+        if self.loss_function == 'mse':
+            # Gradiente y Hessiano para MSE
+            g = (y_pred - self.y) # realmente aqui falta el 2 pero como es constante se ignora
+            h = np.ones_like(self.y)
+        
+        elif self.loss_function == 'logistic':
+            # Gradiente y Hessiano para Log Loss
+            p = 1 / (1 + np.exp(-y_pred))  # Probabilidades predichas (Sigmoid)
+            g = p - self.y  # Gradiente
+            h = p * (1 - p)  # Hessiano
+        else:
+            raise NotImplementedError("Solo 'mse' y 'logistic' implementadas")
+        
+        return g, h
+    
+    def fit(self):
+
+        y_pred = np.zeros_like(self.y)  # Inicializamos las predicciones
+        g, h = self.get_gradients(y_pred)
+        w = np.zeros_like(self.y) 
+
+        data = np.concatenate((self.row_id, self.y, self.X, g, h, w), axis=1)
+        for _ in range(self.boosting_rounds):
+
+            # Comenzamos a hacer crecer los arboles
+            model = Tree(data, eps=0.05, alpha=0.05, k=self.X.shape[1], max_depth=3)
+            model.fit(data)
+            model.get_leaves(model.root)
+            model.do_predicttion(model.leaves)
+
+            # <<< Aquí pones el print para inspeccionar los pesos por hoja >>>
+            print("Pesos por hoja:", model.new_data[:, -1])
+
+            # Ahora reordenamos new_data para que coincida con el orden original
+            # Aseguramos consistencia row_wise
+            order = np.argsort(model.new_data[:, 0].astype(int))
+            new_data = model.new_data[order]
+            model.new_data = new_data
+
+            # cogemos los nuevos pesos
+            w = model.new_data[:,-1].reshape(-1, 1) # forzamos a 2D (n,1)
+            # Añadimos nuevos pesos al Boosting y obtenemos nuevas predicciones
+            y_pred += self.learning_rate*w 
+            # recalculamos gradientes y hessianos
+            g, h = self.get_gradients(y_pred) 
+
+            #Construimos nueva base de datos para el siguiente arbol
+            model.new_data[:,-3:-2] = g.reshape(-1, 1) # mismo forzado a 2D
+            model.new_data[:,-2:-1] = h.reshape(-1, 1) # mismo forzado a 2D
+            data = model.new_data
+        
+        self.y_pred = y_pred
+        
+        return y_pred                                
+
+
+###   PRUEBA  ########################    
+
+import numpy as np
 
 np.random.seed(42)  # <- seed fija
 
 # Definimos n y k para el ejemplo
-n = 20  # Número de filas
-k = 2  # Número de columnas para X
+n = 10  # Número de filas
+k = 2   # Número de columnas para X
 
-# Creamos las matrices individuales con dimensiones aleatorias
-y = np.random.rand(n, 1) # (n, 1)
-X = np.random.rand(n, k) # (n, k)
-g = np.random.rand(n, 1) # (n, 1)
-h = np.random.rand(n, 1) # (n, 1)
+# Generamos datos con un patrón lineal para que el modelo pueda aprender
+X = np.random.rand(n, k)  # (n, k)
+# Definimos una relación lineal simple: y = 3*X0 + 2*X1 + ruido
+y = 3*X[:,0:1] + 2*X[:,1:2] + 0.1*np.random.randn(n,1)  
 
-w = np.random.rand(n, 1) # (n, 1) añadimo suna ultima fila para los pesos
+# Inicializamos y entrenamos el modelo
+model = XGBoost(y, X, learning_rate=0.1, boosting_rounds=10, loss_function='mse')
+predictions = model.fit()
 
-# Concatenamos las matrices horizontalmente para formar 'data'
-data = np.concatenate((y, X, g, h, w), axis=1)
-
-
-model = Tree(data,3,3)
-
-model.fit(data,0.05,0.05)
-model.get_leaves(model.root)
-
-model.do_predicttion(model.leaves,0.05)
-
-new_data = model.new_data
-
-
-#print(model.leaves[1].data)
-#print(new_data)
-
-#print(new_data)
-print(data)
+print("Predicciones reales:")
+print(y)
+print('\n')
+print("Predicciones finales:")
+print(predictions)
